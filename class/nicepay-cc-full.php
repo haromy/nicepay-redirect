@@ -343,9 +343,10 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         $nicepay->set('cartData', json_encode($cartData));
         $nicepay->set('amt', $order_total); // Total gross amount //
         $nicepay->set('referenceNo', $order_id);
-        $nicepay->set('description', 'Payment of invoice No ' . $order_id); // Transaction description
+        $nicepay->set('description', 'Payment of invoice No ' . $order_id);
         $myaccount_page_id  = get_option('woocommerce_myaccount_page_id');
         $myaccount_page_url = null;
+        
         
         if ($current_user->ID != 0) {
             $checkout_url = get_permalink($myaccount_page_id) . "view-order/" . $order_id;
@@ -372,6 +373,11 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         $nicepay->set('deliveryState', $deliveryState);
         $nicepay->set('deliveryPostCd', $deliveryPostCd);
         $nicepay->set('deliveryCountry', $deliveryCountry);
+        $nicepay->set('reqDomain', $_SERVER['HTTP_HOST']);
+        $nicepay->set('reqServerIP', $_SERVER['SERVER_ADDR']);
+        $nicepay->set('userAgent', $_SERVER['HTTP_USER_AGENT']);
+        $nicepay->set('userSessionID', wp_get_session_token());
+        $nicepay->set('userLanguage', get_locale());
         //$nicepay->set('dbProcessUrl', WC()->api_request_url('WC_Gateway_NICEPay_CC'));
         
         //running debug
@@ -379,7 +385,6 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         
         // Send Data
         $response = $nicepay->chargeCard();
-        //$response = null;
         
         //running debug
         $nicepay_log["isi"] = $response;
