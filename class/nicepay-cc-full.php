@@ -160,7 +160,8 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
     }
     
     function receipt_page($order) {
-        echo $this->generate_nicepay_form($order);
+        //echo $this->generate_nicepay_form($order);
+        include_once PLUGIN_PATH."/paymentPage.php";
     }
 
     
@@ -172,6 +173,15 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
     function konversi($nilai) {
         return $nilai * (int) 1;
     }
+
+    function getProperty($order, $property){
+        $functionName = "get_".$property;
+        if (method_exists($order, $functionName)){ // WC v3
+          return (string)$order->{$functionName}();
+        } else { // WC v2
+          return (string)$order->{$property};
+        }
+      }
     
     public function generate_nicepay_form($order_id) {
         global $woocommerce;
@@ -192,14 +202,14 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
                 
                 $product   = $order->get_product_from_item($item);
                 $item_name = $item['name'];
-                $item_meta = new WC_Order_Item_Meta($item['item_meta']);
+                //$item_meta = new WC_Order_Item_Meta($item['item_meta']);
                 
-                if ($meta = $item_meta->display(true, true)) {
-                    $item_name .= ' ( ' . $meta . ' )';
-                }
+                //if ($meta = $item_meta->display(true, true)) {
+                //    $item_name .= ' ( ' . $meta . ' )';
+                //}
                 
                 $pro     = new WC_Product($item["product_id"]);
-                $image   = wp_get_attachment_image_src(get_post_thumbnail_id($pro->id), 'single-post-thumbnail');
+                $image   = wp_get_attachment_image_src(get_post_thumbnail_id($pro->get_id()), 'single-post-thumbnail');
                 $img_url = $image[0];
                 
                 $orderInfo[] = array(
@@ -300,57 +310,29 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         //Get current user
         $current_user = wp_get_current_user();
         
-        //Get Address customer
-        $billingFirstName = $order->billing_first_name;
-        $billingLastName  = $order->billing_last_name;
-        $name             = $billingFirstName . " " . $billingLastName;
-        $billingNm        = $this->checkingAddrRule("name", $name);
+        //Get Billing Address
+        $name           = $this->getProperty($order,'billing_first_name')." ".$this->getProperty($order,'billing_last_name');
+        $billingNm      = $this->checkingAddrRule("name", $name);
+        $billingPhone   = $this->checkingAddrRule("phone", $this->getProperty($order,'billing_phone'));
+        $billingEmail   = $this->getProperty($order,'billing_email');
+        $addr           = $this->getProperty($order,'billing_address_1')." ".$this->getProperty($order,'billing_address_2');
+        $billingAddr    = $this->checkingAddrRule("addr", $addr);
+        $billingCity    = $this->checkingAddrRule("city", $this->getProperty($order,'billing_city'));
+        $billingState   = $this->checkingAddrRule("state", $this->getProperty($order,'billing_state'));
+        $billingPostCd  = $this->checkingAddrRule("postCd", $this->getProperty($order,'billing_postcode'));
+        $billingCountry = $this->checkingAddrRule("country", $this->getProperty($order,'billing_country'));
         
-        $phone        = $order->billing_phone;
-        $billingPhone = $this->checkingAddrRule("phone", $phone);
-        
-        $billingEmail = $order->billing_email;
-        $billingAddr1 = WC()->customer->address_1;
-        $billingAddr2 = WC()->customer->address_2;
-        $addr         = $billingAddr1 . " " . $billingAddr2;
-        $billingAddr  = $this->checkingAddrRule("addr", $addr);
-        
-        $city        = WC()->customer->city;
-        $billingCity = $this->checkingAddrRule("city", $city);
-        
-        $state        = WC()->countries->states[$order->billing_country][$order->billing_state];
-        $billingState = $this->checkingAddrRule("state", $state);
-        
-        $postCd        = WC()->customer->postcode;
-        $billingPostCd = $this->checkingAddrRule("postCd", $postCd);
-        
-        $country        = WC()->countries->countries[$order->billing_country];
-        $billingCountry = $this->checkingAddrRule("country", $country);
-        
-        $name       = $order->shipping_first_name . " " . $order->shipping_last_name;
-        $deliveryNm = $this->checkingAddrRule("name", $name);
-        
-        $phone         = ($current_user->ID == 0) ? $billingPhone : get_user_meta($current_user->ID, "billing_phone", true);
-        $deliveryPhone = $this->checkingAddrRule("phone", $phone);
-        
-        $deliveryEmail = ($current_user->ID == 0) ? $billingEmail : get_user_meta($current_user->ID, "billing_email", true);
-        
-        $deliveryAddr1 = $order->shipping_address_1;
-        $deliveryAddr2 = $order->shipping_address_2;
-        $addr          = $deliveryAddr1 . " " . $deliveryAddr2;
-        $deliveryAddr  = $this->checkingAddrRule("addr", $addr);
-        
-        $city         = $order->shipping_city;
-        $deliveryCity = $this->checkingAddrRule("city", $city);
-        
-        $state         = WC()->countries->states[$order->shipping_country][$order->shipping_state];
-        $deliveryState = $this->checkingAddrRule("state", $state);
-        
-        $postCd         = $order->shipping_postcode;
-        $deliveryPostCd = $this->checkingAddrRule("postCd", $postCd);
-        
-        $country         = WC()->countries->countries[$order->shipping_country];
-        $deliveryCountry = $this->checkingAddrRule("country", $country);
+        // Get Shipping Address
+        $deliName       = $this->getProperty($order,'shipping_first_name')." ".$this->getProperty($order,'shipping_last_name');
+        $deliveryNm     = $this->checkingAddrRule("name", $deliName);
+        $deliveryPhone  = $this->checkingAddrRule("phone", $this->getProperty($order,'billing_phone'));
+        $deliveryEmail  = $this->checkingAddrRule("phone", $this->getProperty($order,'billing_email'));
+        $deliAddr       = $this->getProperty($order,'shipping_address_1')." ".$this->getProperty($order,'shipping_address_2');
+        $deliveryAddr   = $this->checkingAddrRule("addr", $deliAddr);
+        $deliveryCity   = $this->checkingAddrRule("city", $this->getProperty($order,'shipping_city'));
+        $deliveryState  = $this->checkingAddrRule("state", $this->getProperty($order,'shipping_state'));
+        $deliveryPostCd = $this->checkingAddrRule("postCd", $this->getProperty($order,'shipping_postcode'));
+        $deliveryCountry= $this->checkingAddrRule("country", $this->getProperty($order,'shipping_country'));
         
         // Prepare Parameters
         $nicepay = new NicepayLib();
@@ -390,13 +372,14 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         $nicepay->set('deliveryState', $deliveryState);
         $nicepay->set('deliveryPostCd', $deliveryPostCd);
         $nicepay->set('deliveryCountry', $deliveryCountry);
-        $nicepay->set('dbProcessUrl', WC()->api_request_url('WC_Gateway_NICEPay_CC'));
+        //$nicepay->set('dbProcessUrl', WC()->api_request_url('WC_Gateway_NICEPay_CC'));
         
         //running debug
         $nicepay_log["isi"] = $nicepay;
         
         // Send Data
         $response = $nicepay->chargeCard();
+        //$response = null;
         
         //running debug
         $nicepay_log["isi"] = $response;
@@ -404,15 +387,16 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         // Response from NICEPAY
         if (isset($response->data->resultCd) && $response->data->resultCd == "0000") {
             $order->add_order_note(__('Menunggu pembayaran melalui NICEPay Credit Card Payment Gateway dengan id transaksi ' . $response->tXid, 'woocommerce'));
-            header("Location: " . $response->data->requestURL . "?tXid=" . $response->tXid);
+            
             // please save tXid in your database
             // echo "<pre>";
-            // echo "tXid              : $response->tXid\n";
+            //echo "tXid              : $response->tXid\n";
             // echo "API Type          : $response->apiType\n";
             // echo "Request Date      : $response->requestDate\n";
             // echo "Response Date     : $response->requestDate\n";
             // echo "</pre>";
             $woocommerce->cart->empty_cart(); // clean cart data
+            //header("Location: " . $response->data->requestURL . "?tXid=" . $response->tXid);
         } elseif (isset($response->data->resultCd)) {
             // API data not correct or error happened in bank system, you can redirect back to checkout page or echo error message.
             // In this sample, we echo error message
@@ -428,6 +412,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
             // header("Location: "."http://example.com/checkout.php");
             echo "<pre>Connection Timeout. Please Try again.</pre>";
         }
+        return $response;
     }
     
     function process_payment($order_id)
