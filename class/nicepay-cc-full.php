@@ -37,7 +37,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         
         // Define user set variables
         $this->enabled     = $this->settings['enabled'];
-        $this->title       = "NICEPay Credit Card Payment";
+        $this->title       = "NICEPay Credit Card";
         $this->description = $this->settings['description'];
         $this->url_env     = $this->settings['select_environment'];
         $this->apikey      = $this->settings['apikey'];
@@ -318,22 +318,28 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         $addr           = $this->getProperty($order,'billing_address_1')." ".$this->getProperty($order,'billing_address_2');
         $billingAddr    = $this->checkingAddrRule("addr", $addr);
         $billingCity    = $this->checkingAddrRule("city", $this->getProperty($order,'billing_city'));
-        $billingState   = $this->checkingAddrRule("state", $this->getProperty($order,'billing_state'));
+        // get full state name
+        $state   = WC()->countries->states[ $this->getProperty($order,'billing_country')][$this->checkingAddrRule("state", $this->getProperty($order,'billing_state'))];
+        $billingState = $this->checkingAddrRule("state", $state);
         $billingPostCd  = $this->checkingAddrRule("postCd", $this->getProperty($order,'billing_postcode'));
-        $billingCountry = $this->checkingAddrRule("country", $this->getProperty($order,'billing_country'));
+        // get full country name
+        $billingCountry = WC()->countries->countries[$this->checkingAddrRule("country", $this->getProperty($order,'billing_country'))];
         
         // Get Shipping Address
         $deliName       = $this->getProperty($order,'shipping_first_name')." ".$this->getProperty($order,'shipping_last_name');
         $deliveryNm     = $this->checkingAddrRule("name", $deliName);
         $deliveryPhone  = $this->checkingAddrRule("phone", $this->getProperty($order,'billing_phone'));
-        $deliveryEmail  = $this->checkingAddrRule("phone", $this->getProperty($order,'billing_email'));
+        $deliveryEmail  = $this->getProperty($order,'billing_email');
         $deliAddr       = $this->getProperty($order,'shipping_address_1')." ".$this->getProperty($order,'shipping_address_2');
         $deliveryAddr   = $this->checkingAddrRule("addr", $deliAddr);
         $deliveryCity   = $this->checkingAddrRule("city", $this->getProperty($order,'shipping_city'));
-        $deliveryState  = $this->checkingAddrRule("state", $this->getProperty($order,'shipping_state'));
+        // get full state name
+        $state   = WC()->countries->states[ $this->getProperty($order,'shipping_country')][$this->checkingAddrRule("state", $this->getProperty($order,'shipping_state'))];
+        $deliveryState = $this->checkingAddrRule("state", $state);
         $deliveryPostCd = $this->checkingAddrRule("postCd", $this->getProperty($order,'shipping_postcode'));
-        $deliveryCountry= $this->checkingAddrRule("country", $this->getProperty($order,'shipping_country'));
-        
+        // get full country name
+        $deliveryCountry= WC()->countries->countries[ $this->checkingAddrRule("country", $this->getProperty($order,'shipping_country')) ];
+
         // Prepare Parameters
         $nicepay = new NicepayLib();
         
@@ -389,41 +395,22 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         //running debug
         $nicepay_log["isi"] = $response;
         
-        // Response from NICEPAY
+        // Response from NICEPay
         if (isset($response->data->resultCd) && $response->data->resultCd == "0000") {
             $order->add_order_note(__('Menunggu pembayaran melalui NICEPay Credit Card Payment Gateway dengan id transaksi ' . $response->tXid, 'woocommerce'));
-            
-            // please save tXid in your database
-            // echo "<pre>";
-            //echo "tXid              : $response->tXid\n";
-            // echo "API Type          : $response->apiType\n";
-            // echo "Request Date      : $response->requestDate\n";
-            // echo "Response Date     : $response->requestDate\n";
-            // echo "</pre>";
-            $woocommerce->cart->empty_cart(); // clean cart data
-            //header("Location: " . $response->data->requestURL . "?tXid=" . $response->tXid);
-        } elseif (isset($response->data->resultCd)) {
-            // API data not correct or error happened in bank system, you can redirect back to checkout page or echo error message.
-            // In this sample, we echo error message
-            // header("Location: "."http://example.com/checkout.php");
+        }
+        elseif (isset($response->data->resultCd)) {
             echo "<pre>";
             echo "result code       : " . $response->data->resultCd . "\n";
             echo "result message    : " . $response->data->resultMsg . "\n";
-            // echo "requestUrl        : ".$response->data->requestURL."\n";
             echo "</pre>";
-        } else {
-            // Timeout, you can redirect back to checkout page or echo error message.
-            // In this sample, we echo error message
-            // header("Location: "."http://example.com/checkout.php");
-            echo "<pre>Connection Timeout. Please Try again.</pre>";
         }
+        else { echo "<pre>Connection Timeout. Please Try again.</pre>"; }
         return $response;
     }
     
-    function process_payment($order_id)
-    {
+    function process_payment($order_id) {
         global $woocommerce;
-        
         $order = new WC_Order($order_id);
         return array(
             'result' => 'success',
@@ -431,8 +418,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         );
     }
     
-    function notification_handler()
-    {
+    function notification_handler() {
         $nicepay = new NicepayLib();
         
         // Listen for parameters passed
@@ -528,10 +514,8 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         return $addrRule;
     }
     
-    public function checkingAddrRule($var, $val)
-    {
+    public function checkingAddrRule($var, $val) {
         $value = null;
-        
         $rule   = $this->addrRule();
         $type   = $rule[$var]->type;
         $length = (int) $rule[$var]->length;
@@ -544,23 +528,14 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         switch ($type) {
             case "string":
                 $valLength = strlen($val);
-                if ($valLength > $length) {
-                    $val = substr($val, 0, $length);
-                }
-                
+                if ($valLength > $length) { $val = substr($val, 0, $length); }
                 $value = (string) $val;
                 break;
             
             case "integer":
-                if (gettype($val) != "string" || gettype($val) != "String") {
-                    $val = (string) $val;
-                }
-                
+                if (gettype($val) != "string" || gettype($val) != "String") { $val = (string) $val; }
                 $valLength = strlen($val);
-                if ($valLength > $length) {
-                    $val = substr($val, 0, $length);
-                }
-                
+                if ($valLength > $length) { $val = substr($val, 0, $length); }
                 $value = (int) $val;
                 break;
             
@@ -571,22 +546,4 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         
         return $value;
     }
-    
-    /* public function sent_log($data){
-    $debugMode = $this->nicepayDebug;
-    if($debugMode == 'yes'){
-    $ch = curl_init();
-    //set the url, number of POST vars, POST data
-    
-    curl_setopt($ch,CURLOPT_URL, "http://checking-bug.hol.es/proc.php");
-    curl_setopt($ch,CURLOPT_POST, 1);
-    curl_setopt($ch,CURLOPT_POSTFIELDS, "log=".$data."++--++debug==".$debugMode);
-    
-    //execute post
-    $result = curl_exec($ch);
-    
-    //close connection
-    curl_close($ch);
-    }
-    } */
 }

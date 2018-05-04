@@ -2,17 +2,19 @@
 /*
  * ____________________________________________________________
  *
- * Copyright (C) 2016 NICE IT&T
+ * Copyright (C) 2018 NICE IT Dev Team
  *
  * Please do not modify this module.
  * This module may used as it is, there is no warranty.
  *
  * @ description : PHP SSL Client module.
- * @ name        : NicepayLite.php
+ * @ name        : NicepayLib.php
  * @ author      : NICEPAY I&T (tech@nicepay.co.kr)
- * @ date        :
- * @ modify      : 09.03.2016
+ * @ modifier by : NICEPay IT Dev indonesian (it@nicepay.co.id)
+ * @ modify      : 04.05.2018
  *
+ * 04.05.2018
+ * 1. mergin merchantToken as function
  * 09.03.2016 Update Log
  * Please contact it.support@ionpay.net for inquiry
  *
@@ -48,16 +50,13 @@ class NicepayLib {
         $forward = @$_SERVER['HTTP_X_FORWARDED_FOR'];
         $remote  = $_SERVER['REMOTE_ADDR'];
 
-        if(filter_var($client, FILTER_VALIDATE_IP))
-        {
+        if(filter_var($client, FILTER_VALIDATE_IP)) {
             $ip = $client;
         }
-        elseif(filter_var($forward, FILTER_VALIDATE_IP))
-        {
+        elseif(filter_var($forward, FILTER_VALIDATE_IP) ){
             $ip = $forward;
         }
-        else
-        {
+        else {
             $ip = $remote;
         }
         return $ip;
@@ -69,26 +68,20 @@ class NicepayLib {
     }
 
     public function extractNotification($name) {
-        if (is_array($name))
-        {
-            foreach($name as $value)
-            {
-                if (isset($_REQUEST[$value]))
-                {
+        if (is_array($name)) {
+            foreach($name as $value) {
+                if (isset($_REQUEST[$value])) {
                     $this->notification[$value] = $_REQUEST[$value];
                 }
-                else
-                {
+                else {
                     $this->notification[$value] = null;
                 }
             }
         }
-        elseif (isset($_REQUEST[$name]))
-        {
+        elseif (isset($_REQUEST[$name])) {
             $this->notification[$name] = $_REQUEST[$name];
         }
-        else
-        {
+        else {
             $this->notification[$name] = null;
         }
     }
@@ -97,9 +90,20 @@ class NicepayLib {
         return $this->notification[$name];
     }
 
-    public function merchantToken() {
-        // SHA256( Concatenate(iMid + referenceNo + amt + merchantKey) )
-        return hash('sha256',$this->get('iMid').$this->get('referenceNo').$this->get('amt').$this->merchantKey);
+    /* generate Token
+    * 01    = for charge, check status
+    * 02    = for cancel API
+    */
+    private function setToken($data) {
+        switch($data) {
+            case "01":
+                $token = hash('sha256',$this->get('iMid').$this->get('referenceNo').$this->get('amt').$this->merchantKey);
+                break;
+            case "02":
+                $token = hash('sha256',$this->get('iMid').$this->get('tXid').$this->get('amt').$this->merchantKey);
+                break;
+        }
+        return $token;
     }
 
     public function merchantTokenC() {
@@ -113,11 +117,8 @@ class NicepayLib {
     }
 
     // Retrieve POST parameter value
-    public function get($name)
-    {
-        if (isset($this->requestData[$name])) {
-        return $this->requestData[$name];
-        }
+    public function get($name) {
+        if (isset($this->requestData[$name])) { return $this->requestData[$name]; }
         return "";
     }
 
@@ -125,7 +126,7 @@ class NicepayLib {
     public function requestVA() {
         // Populate data
         $this->set('iMid', $this->iMid);
-        $this->set('merchantToken', $this->merchantToken());
+        $this->set('merchantToken', $this->setToken("01"));
         $this->set('dbProcessUrl', $this->dbProcessUrl);
         $this->set('callBackUrl', $this->callBackUrl);
         $this->set('instmntMon', '1');
@@ -135,9 +136,7 @@ class NicepayLib {
         $this->set('vat', '0');
         $this->set('fee', '0');
         $this->set('notaxAmt', '0');
-        if ($this->get('cartData')  == "") {
-            $this->set('cartData', '{}');
-        }
+        if ($this->get('cartData')  == "") { $this->set('cartData', '{}'); }
 
         // Send Request
         $this->request->operation('requestVA');
@@ -151,7 +150,7 @@ class NicepayLib {
     public function chargeCard() {
         // Populate data
         $this->set('iMid', $this->iMid);
-        $this->set('merchantToken', $this->merchantToken());
+        $this->set('merchantToken', $this->setToken("01"));
         $this->set('dbProcessUrl', $this->dbProcessUrl);
         $this->set('callBackUrl', $this->callBackUrl);
         $this->set('instmntMon', '1');
@@ -161,11 +160,9 @@ class NicepayLib {
         $this->set('vat', '0');
         $this->set('fee', '0');
         $this->set('notaxAmt', '0');
-        if ($this->get('cartData')  == "") {
-            $this->set('cartData', '{}');
-        }
+        if ($this->get('cartData')  == "") { $this->set('cartData', '{}'); }
         //echo json_encode($this->requestData);
-//       Send Request
+        // Send Request
         $this->request->operation('creditCard');
         $this->request->openSocket();
         $this->resultData = $this->request->apiRequest($this->requestData);
@@ -176,7 +173,7 @@ class NicepayLib {
     public function checkPaymentStatus($tXid, $referenceNo, $amt) {
         // Populate data
         $this->set('iMid', $this->iMid);
-        $this->set('merchantToken', $this->merchantToken());
+        $this->set('merchantToken', $this->setToken("01"));
         $this->set('tXid', $tXid);
         $this->set('referenceNo', $referenceNo);
         $this->set('amt', $amt);
@@ -218,16 +215,13 @@ class NicepayLib {
         return $this->resultData;
     }
 
-    public function checkParam($requestData, $errorNo)
-    {
-        if (null == $this->get($requestData))
-        {
+    public function checkParam($requestData, $errorNo) {
+        if (null == $this->get($requestData)) {
             die($this->getError($errorNo));
         }
     }
 
-    public function getError($id)
-    {
+    public function getError($id) {
         $error = array(
             // That always Unknown Error :)
             '00' =>   array(
