@@ -99,20 +99,12 @@ class NicepayLib {
 
     public function merchantToken() {
         // SHA256( Concatenate(iMid + referenceNo + amt + merchantKey) )
-        return hash('sha256',   $this->get('iMid').
-                                $this->get('referenceNo').
-                                $this->get('amt').
-                                $this->merchantKey
-        );
+        return hash('sha256',$this->get('iMid').$this->get('referenceNo').$this->get('amt').$this->merchantKey);
     }
 
     public function merchantTokenC() {
         // SHA256( Concatenate(iMid + referenceNo + amt + merchantKey) )
-        return hash('sha256',   $this->get('iMid').
-            $this->get('tXid').
-            $this->get('amt').
-            $this->merchantKey
-        );
+        return hash('sha256',$this->get('iMid').$this->get('tXid').$this->get('amt').$this->merchantKey);
     }
 
     // Set POST parameter name and its value
@@ -172,6 +164,7 @@ class NicepayLib {
         if ($this->get('cartData')  == "") {
             $this->set('cartData', '{}');
         }
+        //echo json_encode($this->requestData);
 //       Send Request
         $this->request->operation('creditCard');
         $this->request->openSocket();
