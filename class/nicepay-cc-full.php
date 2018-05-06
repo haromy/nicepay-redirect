@@ -390,7 +390,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         $nicepay_log["isi"] = $nicepay;
         
         // Send Data
-        $response = $nicepay->chargeCard();
+        $response = $nicepay->registAPI("credit_card");
         
         //running debug
         $nicepay_log["isi"] = $response;
