@@ -146,30 +146,7 @@ class NicepayLib {
         return $this->resultData;
     }
 
-    // Charge Credit Card
-    public function chargeCard() {
-        // Populate data
-        $this->set('iMid', $this->iMid);
-        $this->set('merchantToken', $this->setToken("01"));
-        $this->set('dbProcessUrl', $this->dbProcessUrl);
-        $this->set('callBackUrl', $this->callBackUrl);
-        $this->set('instmntMon', '1');
-        $this->set('instmntType', '1');
-        $this->set('userIP', $this->getUserIP());
-        $this->set('goodsNm', $this->get('description'));
-        $this->set('vat', '0');
-        $this->set('fee', '0');
-        $this->set('notaxAmt', '0');
-        if ($this->get('cartData')  == "") { $this->set('cartData', '{}'); }
-        //echo json_encode($this->requestData);
-        // Send Request
-        $this->request->operation('creditCard');
-        $this->request->openSocket();
-        $this->resultData = $this->request->apiRequest($this->requestData);
-        unset($this->requestData);
-        return $this->resultData;
-    }
-
+    // registAPI fucntion
     public function registAPI($method) {
         $this->set('iMid', $this->iMid);
         $this->set('dbProcessUrl', $this->dbProcessUrl);
@@ -179,18 +156,22 @@ class NicepayLib {
         $this->set('vat', '0');
         $this->set('fee', '0');
         $this->set('notaxAmt', '0');
+        $this->set('instmntMon', '1');
+        $this->set('instmntType', '1');
+        $this->set('merchantToken', $this->setToken("01"));
 
         if ($this->get('cartData')  == "") { $this->set('cartData', '{}'); }
+        
         switch($method) {
             case "credit_card":
-                $this->set('merchantToken', $this->setToken("01"));
-                $this->set('instmntMon', '1');
-                $this->set('instmntType', '1');
                 // Send Request
-                $this->request->operation('creditCard');
+                $this->request->operation('orderRegistV1');
+                break;
+            case "virtual_account":
+                $this->request->operation('orderRegistV1');
                 break;
         }
-        //echo json_encode($this->requestData); // for display json format to send (debugging)
+        echo json_encode($this->requestData); // for display json format to send (debugging)
         $this->request->openSocket();
         $this->resultData = $this->request->apiRequest($this->requestData);
         unset($this->requestData);

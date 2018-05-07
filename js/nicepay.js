@@ -1,12 +1,8 @@
-var payButton = document.getElementById("pay-button");
-    jQuery(payButton).on('click', function(ev) {
-        jQuery.ajax({
-            url: example_ajax_obj.ajaxurl,
-            data: {
-                'action':'example_ajax_request'
-            },
-            success:function(data) {
-                console.log(data);
-            }
-        });
-    });
+jQuery(document).ready(function() {
+	jQuery(".howto").first().show();
+	jQuery( ".navitem" ).click(function() {
+		var target = jQuery(this).attr('id');
+		jQuery(".tabdown").find(".howto").hide();
+		jQuery(".tabdown").find("."+target).show();
+	});
+});

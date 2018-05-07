@@ -1,12 +1,11 @@
 <?php
 
-class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
+class wc_gateway_nicepay_cc extends WC_Payment_Gateway {
     var $callbackUrl;
     private $adminFee = 0; //jika ada request merchant untuk menambahkan credit card fee pada transaksi - dalam Rupiah
     private $mdrFee = 0; //jika ada request merchant untuk menambahkan fee mdr pada transaksi - dalam %
     
-    public function nicepay_item_name($item_name)
-    {
+    public function nicepay_item_name($item_name) {
         if (strlen($item_name) > 127) {
             $item_name = substr($item_name, 0, 124) . '...';
         }
@@ -14,8 +13,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         return html_entity_decode($item_name, ENT_NOQUOTES, 'UTF-8');
     }
     
-    public function __construct()
-    {
+    public function __construct() {
         //plugin id
         $this->id = 'nicepay_cc';
         
@@ -26,10 +24,10 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         $this->has_fields = false;
         
         //payment gateway logo
-        //$this->icon = PLUGIN_PATH.'nicepay.png';
+        $this->icon = PLUGIN_PATH.'nicepay.png';
         
         //redirect URL
-        $this->redirect_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'WC_Gateway_NICEPay_CC', home_url('/')));
+        $this->redirect_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'wc_gateway_nicepay_cc', home_url('/')));
         
         //Load settings
         $this->init_form_fields();
@@ -42,13 +40,13 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         $this->url_env     = $this->settings['select_environment'];
         $this->apikey      = $this->settings['apikey'];
         $this->merchantID  = $this->settings['merchantID'];
+        $this->changeMet   = $this->settings['changeMethod'];
         
         
         // Actions
         $this->includes();
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array(&$this,'process_admin_options'));
         add_action('woocommerce_receipt_'. $this->id, array(&$this,'receipt_page'));
-        
         //Add Text to email
         add_action('woocommerce_email_after_order_table', array($this,'add_content'));
         
@@ -56,8 +54,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         add_action('woocommerce_api_wc_gateway_nicepay_cc', array($this,'notification_handler'));
     }
     
-    function init_form_fields()
-    {
+    function init_form_fields() {
         $this->form_fields = array(
             'enabled' => array(
                 'title' => __('Enable/Disable', 'woothemes'),
@@ -70,7 +67,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
                 'title' => __('Title', 'woothemes'),
                 'type' => 'text',
                 'description' => __('', 'woothemes'),
-                'default' => __('Pembayaran NICEPay Credit Card', 'woothemes')
+                'default' => __('NICEPay Credit Card', 'woothemes')
             ),
             'description' => array(
                 'title' => __('Description', 'woothemes'),
@@ -99,6 +96,13 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
                 'type' => 'text',
                 'description' => __('<small>Isikan dengan Merchant Key dari NICEPay</small>.', 'woothemes'),
                 'default' => ''
+            ),
+            'changeMethod' => array(
+                'title' => __('can change Payment method ?', 'woothemes'),
+                'label' => __('Enable Change', 'woothemes'),
+                'type' => 'checkbox',
+                'description' => '',
+                'default' => 'no'
             )
         );
     }
@@ -116,7 +120,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         
         echo '</table>';
         echo "<br><br>Nicepay Woocommerce Plugins!<br>
-                Copyright (C) 2017  Nicepay<br><br>
+                Copyright (C) 2018  Nicepay<br><br>
 
                 This program is free software: you can redistribute it and/or modify<br>
                 it under the terms of the GNU General Public License as published by<br>
@@ -132,8 +136,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
                 along with this program.  If not, see &lt;http://www.gnu.org/licenses/&gt;.";
     }
     
-    function payment_fields()
-    {
+    function payment_fields() {
         if ($this->description)
             echo wpautop(wptexturize($this->description));
         if ($this->adminFee > 0 || $this->mdrFee > 0) {
@@ -149,8 +152,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         }
     }
     
-    function add_content()
-    {
+    function add_content() {
         if ($this->adminFee > 0) {
             echo 'Exclude Fraud Detection Fee <b>Rp. ' . $this->adminFee . '</b><br/>';
         }
@@ -163,7 +165,6 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         //echo $this->generate_nicepay_form($order);
         include_once PLUGIN_PATH."/paymentPage.php";
     }
-
     
     function includes() {
         include_once PLUGIN_PATH."/lib/NicepayLib.php";
@@ -174,14 +175,14 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         return $nilai * (int) 1;
     }
 
-    function getProperty($order, $property){
+    function getProperty($order, $property) {
         $functionName = "get_".$property;
         if (method_exists($order, $functionName)){ // WC v3
           return (string)$order->{$functionName}();
         } else { // WC v2
           return (string)$order->{$property};
         }
-      }
+    }
     
     public function generate_nicepay_form($order_id) {
         global $woocommerce;
@@ -361,7 +362,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         }
         
         $nicepay->callBackUrl  = $checkout_url;
-        $nicepay->dbProcessUrl = WC()->api_request_url('WC_Gateway_NICEPay_CC'); // Transaction description
+        $nicepay->dbProcessUrl = WC()->api_request_url('wc_gateway_nicepay_cc'); // Transaction description
         $nicepay->set('billingNm', $billingNm); // Customer name
         $nicepay->set('billingPhone', $billingPhone); // Customer phone number
         $nicepay->set('billingEmail', $billingEmail); //
@@ -384,7 +385,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         $nicepay->set('userAgent', $_SERVER['HTTP_USER_AGENT']);
         $nicepay->set('userSessionID', wp_get_session_token());
         $nicepay->set('userLanguage', get_locale());
-        //$nicepay->set('dbProcessUrl', WC()->api_request_url('WC_Gateway_NICEPay_CC'));
+        //$nicepay->set('dbProcessUrl', WC()->api_request_url('wc_gateway_nicepay_cc'));
         
         //running debug
         $nicepay_log["isi"] = $nicepay;
@@ -471,8 +472,7 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
         }
     }
     
-    public function addrRule()
-    {
+    public function addrRule() {
         $addrRule = array(
             "name" => (object) array(
                 "type" => "string",
@@ -543,7 +543,6 @@ class WC_Gateway_NICEPay_CC extends WC_Payment_Gateway {
                 $value = (string) $val;
                 break;
         }
-        
         return $value;
     }
 }

@@ -6,6 +6,9 @@ edited by fariz
 
 ## Changelog
 
+2018-05-07
+- add VA direct API V1
+
 2018-05-05
 - add paymentPage.php
 - add empty cart
