@@ -22,12 +22,14 @@ function woocommerce_nicepay_init()
 	}
 
 	define( 'PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
-	require_once dirname( __FILE__ ) . '/class/nicepay-cc-full.php';
+    require_once dirname( __FILE__ ) . '/class/nicepay-cc-full.php';
+    require_once dirname( __FILE__ ) . '/class/nicepay-va.php';
     
     add_filter('woocommerce_payment_gateways', 'add_nicepay_gateway');
 }
 
 function add_nicepay_gateway($methods) {
-    $methods[] = 'WC_Gateway_NICEPay_CC';
+    $methods[] = 'wc_gateway_nicepay_cc';
+    $methods[] = 'wc_gateway_nicepay_va';
     return $methods;
 }

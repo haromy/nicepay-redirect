@@ -42,8 +42,8 @@ class NicepayRequestor {
     public function operation($type) {
         if ($type == "requestVA") {
             $this->apiUrl = NICEPAY_ENV.NICEPAY_REQ_VA_URL;
-        } else if ($type == "creditCard") {
-            $this->apiUrl = NICEPAY_ENV.NICEPAY_REQ_CC_URL;
+        } else if ($type == "orderRegistV1") {
+            $this->apiUrl = NICEPAY_ENV.NICEPAY_ORDER_REGIST_V1_URL;
         } else if ($type == "checkPaymentStatus") {
             $this->apiUrl = NICEPAY_ENV.NICEPAY_ORDER_STATUS_URL;
         } else if ($type == "cancelVA") {
