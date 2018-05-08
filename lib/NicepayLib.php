@@ -164,11 +164,10 @@ class NicepayLib {
         
         switch($method) {
             case "credit_card":
-                // Send Request
-                $this->request->operation('orderRegistV1');
+                $this->request->operation('redirect_orderRegist_V1');
                 break;
             case "virtual_account":
-                $this->request->operation('orderRegistV1');
+                $this->request->operation('direct_onepass_V1');
                 break;
         }
         echo json_encode($this->requestData); // for display json format to send (debugging)

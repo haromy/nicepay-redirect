@@ -2,14 +2,14 @@
 class wc_gateway_nicepay_va extends WC_Payment_Gateway {
     var $callbackUrl;
     var $tSuccess = array();
-    private $adminFee = 0; //jika ada request merchant untuk menambahkan admin fee pada transaksi - dalam Rupiah
+    private $adminFee = 0;
 
-    public function nicepay_item_name( $item_name ) {
-        if ( strlen( $item_name ) > 127 ) {
-            $item_name = substr( $item_name, 0, 124 ) . '...';
+    public function nicepay_item_name($item_name ) {
+        if ( strlen($item_name ) > 127 ) {
+            $item_name = substr($item_name, 0, 124 ) . '...';
         }
 
-        return html_entity_decode( $item_name, ENT_NOQUOTES, 'UTF-8' );
+        return html_entity_decode($item_name, ENT_NOQUOTES, 'UTF-8' );
     }
 
     public function __construct() {
@@ -17,7 +17,7 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $this->id = 'nicepay_va';
 
         //Payment Gateway title
-        $this->method_title = 'Virtual Account by NICEPay Payment Gateway';
+        $this->method_title = 'NICEPay Virtual Account';
 
         //true only in case of direct payment method, false in our case
         $this->has_fields = false;
@@ -34,8 +34,9 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
 
         // Define user set variables
         $this->enabled      = $this->settings['enabled'];
-        $this->title        = "Bank Transfer Virtual Account";
+        $this->title        = "NICEPay Virtual Account";
         $this->description  = $this->settings['description'];
+        $this->url_env     = $this->settings['select_environment'];
         $this->apikey       = $this->settings['apikey'];
         $this->merchantID   = $this->settings['merchantID'];
 
@@ -48,9 +49,9 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         add_action( 'woocommerce_thankyou', array($this, 'add_description_payment_success'), 1 );
 
         //Add Text to email
-        add_action( 'woocommerce_email_after_order_table', array( $this, 'add_content' ));
+        add_action( 'woocommerce_email_after_order_table', array($this, 'add_content' ));
         // Payment listener/API hook
-        //add_action( 'woocommerce_api_wc_gateway_nicepay_va', array( $this, 'notification_handler' ) );
+        //add_action( 'woocommerce_api_wc_gateway_nicepay_va', array($this, 'notification_handler' ) );
     }
 
     function init_form_fields() {
@@ -73,6 +74,16 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
                 'type' => 'textarea',
                 'description' => __( '', 'woothemes' ),
                 'default' => 'Sistem pembayaran menggunakan NICEPay Virtual Payment.'
+            ),
+            'select_environment' => array(
+                'title' => __( 'Environment', 'woothemes' ),
+                'type' => 'select',
+                'default' => 'dev',
+                'description' => __( 'Select the Environment', 'woothemes' ),
+                'options'   => array(
+                  'dev'    => __( 'development', 'woothemes' ),
+                  'prod'   => __( 'production', 'woothemes' ),
+                ),
             ),
             'merchantID' => array(
                 'title' => __( 'Merchant ID', 'woothemes' ),
@@ -130,13 +141,13 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         WC()->session->set('bankCd', $_POST["bankCd"]);
     }
 
-    function bank_list(){
+    function bank_list() {
         $bank = array(
             "BMRI" => array("label" => "Mandiri","disabled" => "no"),
             "BBBA" => array("label" => "Permata Bank","disabled" => "no"),
             "IBBK" => array("label" => "Maybank","disabled" => "no"),
             "BNIN" => array("label" => "BNI","disabled" => "no"),
-            "CENA" => array("label" => "BCA","disabled" => "yes"),
+            "CENA" => array("label" => "BCA","disabled" => "no"),
             "BNIA" => array("label" => "CIMB Niaga","disabled" => "no"),
             "HNBN" => array("label" => "Keb Hana Bank","disabled" => "no"),
             "BRIN" => array("label" => "BRI","disabled" => "no"),
@@ -152,37 +163,58 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $i = 0;
         $howto = array(
             "BMRI" => array(
-                "atm" => array(
-                    "Pilih Menu <span class='a'>Bayar/Beli</span>",
-                    "Pilih <span class='a'>Lainnya</span>",
-                    "Pilih <span class='a'>Multi Payment</span>",
-                    "Input <span class='a'>70014</span> sebagai <span class='a'>Kode Institusi</span>",
-                    "input Virtual Account Number,<br>misal: <span class='a'>70014xxxxxx</span>",
-                    "Pilih <span class='a'>Benar</span>",
-                    "Pilih <span class='a'>Ya</span>",
-                    "Pilih <span class='a'>Ya</span>",
-                    "Ambil bukti bayar anda", "Selesai"
-                ),
+                "atm" => array("Pilih Menu <span class='a'>Bayar/Beli</span>", "Pilih <span class='a'>Lainnya</span>", "Pilih <span class='a'>Multi Payment</span>", "Input <span class='a'>70014</span> sebagai <span class='a'>Kode Institusi</span>", "input Virtual Account Number,<br>misal: <span class='a'>70014xxxxxx</span>", "Pilih <span class='a'>Benar</span>", "Pilih <span class='a'>Ya</span>", "Pilih <span class='a'>Ya</span>", "Ambil bukti bayar anda", "Selesai"),
                 "sms" => array(),
-                "mbank" => array(
-                    "Login <span class='a'>Mobile Banking</span>",
-                    "Pilih <span class='a'>Bayar</span>",
-                    "Pilih <span class='a'>Multi Payment</span>",
-                    "Input <span class='a'>Transferpay</span> sebagai <span class='a'>Penyedia Jasa</span>", "Input Nomor Virtual Account,<br>misal: <span class='a'>70014XXXXXXXXXXX</span>",
-                    "Pilih <span class='a'>Lanjut</span>",
-                    "Input <span class='a'>OTP</span> and <span class='a'>PIN</span>",
-                    "Pilih <span class='a'>OK</span>",
-                    "Bukti bayar ditampilkan",
-                    "Selesai"),
-                "ibank" => array(
-                    "Login <span class='a'>Internet Banking</span>",
-                    "Pilih <span class='a'>Bayar</span>",
-                    "Pilih <span class='a'>Multi Payment</span>",
-                    "Input <span class='a'>Transferpay sebagai Penyedia Jasa</span>",
-                    "Input Nomor Virtual Account, <br>misal: <span class='a'>70014XXXXXXXXXXX</span> sebagai <span class='a'>Kode Bayar</span>",
-                    "Ceklis <span class='a'>IDR</span>",
-                    "Klik <span class='a'>Lanjutkan</span>",
-                    "Bukti bayar ditampilkan", "Selesai")
+                "mbank" => array("Login <span class='a'>Mobile Banking</span>", "Pilih <span class='a'>Bayar</span>", "Pilih <span class='a'>Multi Payment</span>", "Input <span class='a'>Transferpay</span> sebagai <span class='a'>Penyedia Jasa</span>", "Input Nomor Virtual Account,<br>misal: <span class='a'>70014XXXXXXXXXXX</span>", "Pilih <span class='a'>Lanjut</span>", "Input <span class='a'>OTP</span> and <span class='a'>PIN</span>", "Pilih <span class='a'>OK</span>", "Bukti bayar ditampilkan", "Selesai"),
+                "ibank" => array("Login <span class='a'>Internet Banking</span>", "Pilih <span class='a'>Bayar</span>", "Pilih <span class='a'>Multi Payment</span>", "Input <span class='a'>Transferpay sebagai Penyedia Jasa</span>", "Input Nomor Virtual Account, <br>misal: <span class='a'>70014XXXXXXXXXXX</span> sebagai <span class='a'>Kode Bayar</span>", "Ceklis <span class='a'>IDR</span>", "Klik <span class='a'>Lanjutkan</span>", "Bukti bayar ditampilkan", "Selesai")
+            ),
+            "CENA" => array(
+                "atm" => array("Pilih Menu <span class='a'>Transaksi Lainnya</a>", "Pilih <span class='a'>Transfer</a>", "Pilih <span class='a'>Ke rekening BCA Virtual Account</a>", "Input Nomor Virtual Account,<br>misal: <span class='a'>123456789012XXXX</a>", "Pilih <span class='a'>Benar</a>", "Pilih <span class='a'>Ya</a>", "Ambil bukti bayar anda", "Selesai"),
+                "sms" => array(),
+                "mbank" => array("Login <span class='a'>Mobile Banking</a>", "Pilih <span class='a'>m-Transfe</a>", "Pilih <span class='a'>BCA Virtual Account</a>", "Input Nomor Virtual Account,<br>misal. <span class='a'>123456789012XXXX</a> sebagai No. <span class='a'>Virtual Account</a>", "Klik <span class='a'>Send</a>", "Informasi VA akan ditampilkan", "Klik <span class='a'>O</a>", "Input <span class='a'>PIN</a> Mobile Banking", "Bukti bayar ditampilkan", "Selesai"),
+                "ibank" => array("Login <span class='a'>Internet Banking</a>", "Pilih <span class='a'>Transfer Dana</a>", "Pilih <span class='a'>Transfer Ke BCA Virtual Account</a>", "Input Nomor Virtual Account,<br>misal: <span class='a'>123456789012XXXX</a> sebagai No. <span class='a'>Virtual Account</a>", "Klik <span class='a'>Lanjutka</a>n", "Input <span class='a'>Respon KeyBCA Apply 1</a>", "Klik <span class='a'>Kirim</a>", "Bukti bayar ditampilkan", "Selesai")
+            ),
+            "BNI" => array(
+                "atm" => array("Pilih <span class='a'>Menu Lain", "Pilih <span class='a'>Menu Transfer", "Pilih <span class='a'>Ke Rekening BNI", "Masukkan Nominal. misal, <span class='a'>10000", "Masukkan Nomor Virtual Account.<br>misal: <span class='a'>8848XXXXXXXXXXXX", "Pilih <span class='a'>Ya", "Ambil Bukti Pembayaran Anda", "Selesai"),
+                "sms" => array("Masuk <span class='a'>Aplikasi SMS Banking BNI</span>", "Pilih <span class='a'>Menu Transfer</span>", "Pilih <span class='a'>Trf Rekening BNI</span>", "Masukkan Nomor Virtual Account.<br>misal, <span class='a'>8848XXXXXXXXXXXX</span>", "Masukkan Jumlah Tagihan. misal, <span class='a'>10000</span>", "Pilih <span class='a'>Proses</span>", "Pada Pop Up Message, Pilih <span class='a'>Setuj</span>u", "Anda Akan Mendapatkan Pesan Konfirmasi", "Masukkan 2 Angka Dari <span class='a'>PIN Anda</span> Dengan Mengikuti Petunjuk Yang Tertera Pada Pesan", "Bukti Pembayaran Ditampilkan", "Selesai"),
+                "mbank" => array("Pilih <span class='a'>Transfer</span>", "Pilih <span class='a'>Antar Rekening BNI</span>", "Pilih <span class='a'>Rekening Tujuan</span>", "Pilih <span class='a'>Input Rekening Baru</span>", "Masukkan Nomor Virtual Account sebagai <span class='a'>Nomor Rekening, <br>misal: <span class='a'>8848XXXXXXXXXXXX", "Klik <span class='a'>Lanjut</span>", "Klik <span class='a'>Lanjut Kembali</span>", "Masukkan Nominal Tagihan. misal, <span class='a'>10000</span>", "Klik <span class='a'>Lanjut</span>", "Periksa Detail Konfirmasi. Pastikan Data Sudah Benar", "Jika Sudah Benar, Masukkan <span class='a'>Password Transaksi</span>", "Klik <span class='a'>Lanjut</span>", "Bukti Pembayaran Ditampilkan", "Selesai"),
+                "ibank" => array("Masuk <span class='a'>Internet Banking</span>", "Pilih <span class='a'>Transaksi</span>", "Pilih <span class='a'>Info dan Administrasi</span>", "Pilih <span class='a'>Atur Rekening Tujuan</span>", "Pilih <span class='a'>Tambah Rekening Tujuan</span>", "Klik <span class='a'>Ok</span>", "Masukkan Nomor Order Sebagai <span class='a'>Nama Singkat</span> misal, <span class='a'>Invoice-1234</span>", "Masukkan Nomor Virtual Account Sebagai <span class='a'>Nomor Rekening</span> misal, <span class='a'>8848XXXXXXXXXXXX</span>", "Lengkapi Semua Data Yang Diperlukan", "Klik <span class='a'>Lanjutka</span>n", "Masukkan <span class='a'>Kode Otentikasi Token</span> lalu, <span class='a'>Proses</span>", "Rekening Tujuan Berhasil Ditambahkan", "Pilih <span class='a'>Menu Transfer</span>", "Pilih <span class='a'>Transfer Antar Rek. BNI</span>", "Pilih Rekening Tujuan dengan <span class='a'>Nama Singkat</span> Yang Sudah Anda Tambahkan. misal, <span class='a'>Invoice-1234</span>", "Masukkan Nominal. misal, <span class='a'>10000</span>", "Masukkan <span class='a'>Kode Otentikasi Token</span>", "Bukti Pembayaran Ditampilkan", "Selesai")
+            ),
+            "IBBK" => array(
+                "atm" => array("Pilih Menu <span class='a'>Pembayaran/Top Up Pulsa", "Pilih <span class='a'>Virtual Account", "Input Nomor Virtual Account, misal. <span class='a'>7812XXXXXXXXXXXX", "Pilih <span class='a'>Benar", "Pilih <span class='a'>Ya", "Ambil bukti bayar anda", "Selesai"),
+                "sms" => array("SMS ke <span class='a'>69811", "Ketik <span class='a'>TRANSFER <Nomor Virtual Account> <Nominal>, <br>Contoh: <span class='a'>TRANSFER 7812XXXXXXXXXXXX 10000", "Kirim SMS", "Anda akan mendapat balasan,<br><span class='a'>Transfer dr rek < nomor rekening anda > ke rek < Nomor Virtual Account > sebesar Rp. 10.000 Ketik < karakter acak >", "Balas SMS tersebut, ketik <span class='a'>< karakter acak >", "Kirim SMS", "Selesai"),
+                "mbank" => array(),
+                "ibank" => array("Login <span class='a'>Internet Banking</span>", "Pilih <span class='a'>Rekening dan Transaksi</span>", "Pilih <span class='a'>Maybank Virtual Account</span>", "Pilih <span class='a'>Sumber Tabunga</span>n", "Input Nomor Virtual Account, misal. <span class='a'>700141234567XXX</span>X", "Input Nominal, misal. <span class='a'>10000</span>", "Klik <span class='a'>Submit</span>", "Input <span class='a'>SMS Token</span>", "Bukti bayar ditampilkan", "Selesai")
+            ),
+            "BBBA" => array(
+                "atm" => array("Pilih Menu <span class='a'>Transaksi Lainnya</span>", "Pilih <span class='a'>Pembayaran</span>", "Pilih <span class='a'>Pembayaran Lain-lain</span>", "Pilih <span class='a'>Virtual Account</span>", "Input Nomor Virtual Account, misal. <span class='a'>8625XXXXXXXXXXXX</span>", "Select <span class='a'>Benar</span>", "Select <span class='a'>Ya</span>", "Ambil bukti bayar anda", "Selesai"),
+                "sms" => array(),
+                "mbank" => array("Login <span class='a'>Mobile Banking</span>", "Pilih <span class='a'>Pembayaran Tagihan</span>", "Pilih <span class='a'>Virtual Account</span>", "Input Nomor Virtual Account, misal. <span class='a'>8625XXXXXXXXXXXX sebagai <span class='a'>No. Virtual Account</span>", "Input Nominal misal. <span class='a'>10000</span>", "Klik <span class='a'>Kirim</span>", "Input <span class='a'>Token</span>", "Klik <span class='a'>Kirim</span>", "Bukti bayar akan ditampilkan", "Selesai"),
+                "ibank" => array("Login Internet Banking", "Pilih <span class='a'>Pembayaran Tagihan</span>", "Pilih <span class='a'>Virtual Account</span>", "Input Nomor Virtual Account, misal. <span class='a'>8625XXXXXXXXXXXX sebagai <span class='a'>No. Virtual Account</span>", "Input Nominal misal. <span class='a'>10000</span>", "Klik <span class='a'>Kirim</span>", "Input <span class='a'>Token</span>", "Klik <span class='a'>Kirim</span>", "Bukti bayar akan ditampilkan", "Selesai")
+            ),
+            "BNIA" => array(
+                "atm" => array("Pilih Menu <span class='a'>Pembayaran</span>", "Pilih Menu <span class='a'>Lanjut</span>", "Pilih Menu <span class='a'>Virtual Account</span>", "Masukkan Nomor Virtual Account, misal. <span class='a'>5919XXXXXXXXXXXX</span>", "Pilih <span class='a'>Proses</span>", "Data Virtual Account akan ditampilkan", "Pilih <span class='a'>Proses</span>", "Ambil bukti bayar anda", "Selesai"),
+                "sms" => array(),
+                "mbank" => array("Login <span class='a'>Go Mobile</span>", "Pilih Menu <span class='a'>Transfer</span>", "Pilih Menu <span class='a'>Other Rekening Ponsel/CIMB Niaga</span>", "Pilih Sumber Dana yang akan digunakan", "Pilih <span class='a'>Casa</span>", "Masukkan Nomor Virtual Account, misal. <span class='a'>5919XXXXXXXXXXXX</span>", "Masukkan Nominal misal. <span class='a'>10000</span>", "klik <span class='a'>Lanjut</span>", "Data Virtual Account akan ditampilkan", "Masukkan <span class='a'>PIN Mobile</span>", "Klik <span class='a'>Konfirmasi</span>", "Bukti bayar akan dikirim melalui sms", "Selesai"),
+                "ibank" => array("Login <span class='a'>Internet Banking</span>", "Pilih <span class='a'>Bayar Tagihan</span>", "Rekening Sumber - Pilih yang akan Anda digunakan", "Jenis Pembayaran - Pilih <span class='a'>Virtual Account</span>", "Untuk Pembayaran - Pilih <span class='a'>Masukkan Nomor Virtual Account</span>", "Nomor Rekening Virtual, misal. <span class='a'>5919XXXXXXXXXXXX</span>", "Isi <span class='a'>Remark Jika diperlukan</span>", "Klik <span class='a'>Lanjut</span>", "Data Virtual Account akan ditampilkan", "Masukkan<span class='a'> mPIN</span>", "Klik <span class='a'>Kirim</span>", "Bukti bayar akan ditampilkan", "Selesai")
+            ),
+            "BDIN" => array(
+                "atm" => array("Pilih Menu <span class='a'>Pembayaran</span>", "Pilih <span class='a'>Lainnya</span>", "Pilih Menu <span class='a'>Virtual Account</span>", "Input Nomor Virtual Account, misal. <span class='a'>7915XXXXXXXXXXXX</span>", "Pilih <span class='a'>Benar</span>", "Data Virtual Account akan ditampilkan", "Pilih <span class='a'>Ya</span>", "Ambil bukti bayar anda", "Selesai"),
+                "sms" => array(),
+                "mbank" => array("Login <span class='a'>D-Mobile</span>", "Pilih menu <span class='a'>Pembayara</span>n", "Pilih menu <span class='a'>Virtual Account</span>", "Pilih <span class='a'>Tambah Biller Baru Pembayaran</span>", "Tekan <span class='a'>Lanjut</span>", "Masukkan Nomor Virtual Account, misal. <span class='a'>7915XXXXXXXXXXXX</span>", "Tekan <span class='a'>Ajukan</span>", "Data Virtual Account akan ditampilkan", "Masukkan <span class='a'>mPIN</span>", "Pilih <span class='a'>Konfirmasi</span>", "Bukti bayar akan dikirim melalui sms", "Selesai"),
+                "ibank" => array()
+            ),
+            "HNBN" => array(
+                "atm" => array("Pilih Menu <span class='a'>Pembayaran</span>", "Pilih <span class='a'>Lainnya</span>", "Input Nomor Virtual Account, misal. <span class='a'>9772XXXXXXXXXXXX</span>", "Pilih <span class='a'>Benar</span>", "Pilih <span class='a'>Ya</span>", "Ambil bukti bayar anda", "Selesai"),
+                "sms" => array(),
+                "mbank" => array(),
+                "ibank" => array("Login <span class='a'>Internet Banking</span>", "Pilih menu <span class='a'>Transfer</span> kemudian Pilih <span class='a'>Withdrawal Account Information</span>", "Pilih <span class='a'>Account Number anda</span>", "Input Nomor Virtual Account, misal. <span class='a'>9772XXXXXXXXXXXX</span>", "Input Nominal, misal. <span class='a'>10000</span>", "Click <span class='a'>Submit</span>", "Input <span class='a'>SMS Pin</span>", "Bukti bayar akan ditampilkan", "Selesai")
+            ),
+            "BRIN" => array(
+                "atm" => array("Pilih Menu <span class='a'>Transaksi Lain</span>", "Pilih Menu <span class='a'>Pembayaran</span>", "Pilih Menu <span class='a'>Lain-lain</span>", "Pilih Menu <span class='a'>BRIVA</span>", "Masukkan Nomor Virtual Account, misal. <span class='a'>88788XXXXXXXXXXX</span>", "Pilih <span class='a'>Ya</span>", "Ambil bukti bayar anda", "Selesai"),
+                "sms" => array(),
+                "mbank" => array("Login <span class='a'>BRI Mobile</span>", "Pilih <span class='a'>Mobile Banking BRI</span>", "Pilih Menu <span class='a'>Pembayaran</span>", "Pilih Menu <span class='a'>BRIVA</span>", "Masukkan Nomor Virtual Account, misal. <span class='a'>88788XXXXXXXXXXX</span>", "Masukkan Nominal misal. <span class='a'>10000</span>", "Klik <span class='a'>Ok</span>", "Masukkan <span class='a'>PIN Mobile</span>", "Klik <span class='a'>Kirim</span>", "Bukti bayar akan dikirim melalui sms", "Selesai"),
+                "ibank" => array("Login <span class='a'>Internet Banking</span>", "Pilih <span class='a'>Pembayaran</span>", "Pilih <span class='a'>BRIVA</span>", "Masukkan Nomor Virtual Account, misal. <span class='a'>88788XXXXXXXXXXX</span>", "Klik <span class='a'>Kirim</span>", "Masukkan <span class='a'>Password</span>", "Masukkan <span class='a'>mToken</span>", "Klik <span class='a'>Kirim</span>", "Bukti bayar akan ditampilkan", "Selesai")
             )
         );
         $count_atm = count($howto[$input]["atm"]);
@@ -194,35 +226,35 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $tabdown .= "<div class='tabdown'>";
         if ($count_atm > 0) {
             $output .= "<li class='navitem' id='atm'>ATM</li>";
-            $tabdown .="<div class='atm howto'>";
+            $tabdown .="<div class='atm howto'><ul>";
             for ($i=0;$i<$count_atm;$i++) {
-                $tabdown .= $howto[$input]["atm"][$i]."<br>";
+                $tabdown .= "<li>".$howto[$input]["atm"][$i]."</li>";
             }
-            $tabdown .="</div>";
+            $tabdown .="</ul></div>";
         }
         if ($count_sms > 0) {
             $output .= "<li class='navitem' id='sms'>SMS Banking</li>";
-            $tabdown .="<div class='sms howto'>";
+            $tabdown .="<div class='sms howto'><ul>";
             for ($i=0;$i<$count_sms;$i++) {
-                $tabdown .= $howto[$input]["sms"][$i]."<br>";
+                $tabdown .= "<li>".$howto[$input]["sms"][$i]."<br>";
             }
-            $tabdown .="</div>";
+            $tabdown .="</ul></div>";
         }
         if ($count_mbank > 0) {
             $output .= "<li class='navitem' id='mbank'>M-Banking</li>";
-            $tabdown .="<div class='mbank howto'>";
+            $tabdown .="<div class='mbank howto'><ul>";
             for ($i=0;$i<$count_mbank;$i++) {
-                $tabdown .= $howto[$input]["mbank"][$i]."<br>";
+                $tabdown .= "<li>".$howto[$input]["mbank"][$i]."<br>";
             }
-            $tabdown .="</div>";
+            $tabdown .="</ul></div>";
         }
         if ($count_ibank > 0) {
             $output .= "<li class='navitem' id='ibank'>I-Banking</li>";
-            $tabdown .="<div class='ibank howto'>";
+            $tabdown .="<div class='ibank howto'><ul>";
             for ($i=0;$i<$count_ibank;$i++) {
-                $tabdown .= $howto[$input]["ibank"][$i]."<br>";
+                $tabdown .= "<li>".$howto[$input]["ibank"][$i]."<br>";
             }
-            $tabdown .="</div>";
+            $tabdown .="</ul></div>";
         }
         $output .= "</ul>";
         $tabdown .= "</div>";
@@ -267,28 +299,28 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $order = new WC_Order($order_id);
         $cart = new WC_Cart();
 
-        if ( sizeof( $order->get_items() ) > 0 ) {
-            foreach ( $order->get_items() as $item ) {
+        if ( sizeof($order->get_items() ) > 0 ) {
+            foreach ($order->get_items() as $item ) {
                 if ( ! $item['qty'] ) {
                 continue;
                 }
 
-                $product   = $order->get_product_from_item( $item );
+                $product   = $order->get_product_from_item($item );
                 $item_name = $item['name'];
-                //$item_meta = new WC_Order_Item_Meta( $item['item_meta'] );
+                //$item_meta = new WC_Order_Item_Meta($item['item_meta'] );
 
-                //if ( $meta = $item_meta->display( true, true ) ) {
+                //if ($meta = $item_meta->display( true, true ) ) {
                 //    $item_name .= ' ( ' . $meta . ' )';
                 //}
 
-                $pro = new WC_Product($item["product_id"]);
-                $image = wp_get_attachment_image_src( get_post_thumbnail_id( $pro->id ), 'single-post-thumbnail' );
-                $img_url = $image[0];
+                $pro        = new WC_Product($item["product_id"]);
+                $image      = wp_get_attachment_image_src( get_post_thumbnail_id($pro->get_id()), 'single-post-thumbnail' );
+                $img_url    = $image[0];
 
                 $orderInfo[] = array(
                     'img_url' => $img_url,
-                    'goods_name' => $this->nicepay_item_name( $item_name ),
-                    'goods_detail' => $this->nicepay_item_name( $item_name ),
+                    'goods_name' => $this->nicepay_item_name($item_name ),
+                    'goods_detail' => $this->nicepay_item_name($item_name ),
                     'goods_amt' => $this->konversi($item["line_subtotal"]+$item["line_tax"])
                 );
 
@@ -414,8 +446,8 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $myaccount_page_id = get_option( 'woocommerce_myaccount_page_id' );
         $myaccount_page_url = null;
 
-        if ( $myaccount_page_id ) {
-            $myaccount_page_url = get_permalink( $myaccount_page_id );
+        if ($myaccount_page_id ) {
+            $myaccount_page_url = get_permalink($myaccount_page_id );
         }
 
         $nicepay->callBackUrl = $myaccount_page_url."view-order/".$order_id;
@@ -446,7 +478,7 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $this->sent_log(json_encode($nicepay_log));
 
         // Send Data
-        $response = $nicepay->requestVA();
+        $response = $nicepay->registAPI("virtual_account");
 
         //running debug
         $nicepay_log["isi"] = $response;
@@ -498,7 +530,7 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
 
             $this->add_payment_detail_to_order_email($dataTr);
 
-            header("Location: ".$this->get_return_url( $order ));
+            header("Location: ".$this->get_return_url($order ));
             // please save tXid in your database
             // echo "<pre>";
             // echo "tXid              : $response->tXid\n";
@@ -523,7 +555,7 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         }
     }
 
-    public function add_description_payment_success($order){
+    public function add_description_payment_success($order) {
         echo "<h2 id='h2thanks'>Bank Transfer Virtual Account</h2>";
         echo "<table border='0' cellpadding='10'>";
         echo '<tr><td><strong>Deskripsi</strong></td><td>'.WC()->session->get('description').'</td></tr>';
@@ -534,17 +566,11 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
 
         echo '<p>Pembayaran melalui '.WC()->session->get('bankName').' Virtual Account dapat dilakukan dengan mengikuti petunjuk berikut :</p>';
         echo $this->how_to(WC()->session->get('bankCd'));
-
-        function my_scripts_method() {
-            wp_register_script('custom_script',plugin_dir_url( __DIR__ ).'/js/nicepay.js',array('jquery'),'1.0',true);
-            wp_enqueue_script('custom_script');
-        }
-        add_action('wp_footer', 'my_scripts_method');
     }
 
     public function add_payment_detail_to_order_email($session){
         $current_user = wp_get_current_user();
-        $email_to = ($current_user->ID == 0) ? $session['billingEmail'] : get_user_meta( $current_user->ID, "billing_email", true);
+        $email_to = ($current_user->ID == 0) ? $session['billingEmail'] : get_user_meta($current_user->ID, "billing_email", true);
         $admin_email = get_option( 'admin_email' );
         $blogname = get_option( 'blogname' );
         $headers[] = 'Content-Type: text/html; charset=UTF-8';
@@ -552,7 +578,7 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $subject = "Detail Pembayaran order #".$session['reference_no'];
         $message = $this->petunjuk_payment_va_to_email($session);
 
-        wp_mail( $email_to, $subject, $message, $headers );
+        wp_mail($email_to, $subject, $message, $headers );
     }
 
     function petunjuk_payment_va_to_email($data){

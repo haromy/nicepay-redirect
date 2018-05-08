@@ -14,8 +14,7 @@ if (!defined('ABSPATH'))
 
 add_action('plugins_loaded', 'woocommerce_nicepay_init', 0);
 
-function woocommerce_nicepay_init()
-{
+function woocommerce_nicepay_init() {
     //Validation class payment gateway woocommerce
     if (!class_exists('WC_Payment_Gateway')) {
 		return;
@@ -33,3 +32,14 @@ function add_nicepay_gateway($methods) {
     $methods[] = 'wc_gateway_nicepay_va';
     return $methods;
 }
+
+function nicepay_css() {
+    wp_enqueue_style('nicepay-css',plugin_dir_url( __FILE__ ) .'css/nicepay.css');
+}
+add_action('wp_enqueue_scripts','nicepay_css');
+
+function my_scripts_method() {
+    wp_register_script('custom_script',plugin_dir_url( __FILE__ ) .'/js/nicepay.js',array('jquery'),'1.0',true);
+    wp_enqueue_script('custom_script');
+}
+add_action('wp_footer', 'my_scripts_method');

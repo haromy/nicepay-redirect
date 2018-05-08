@@ -1,0 +1,37 @@
+.headnav {
+    list-style-type:none;
+    background-color:#d1d1d1;
+    margin:0;
+    padding:0px 10px;
+    overflow:hidden;
+    border-radius:5px;
+}
+.headnav .navitem {
+    float:left;
+    padding:5px 10px;
+    text-align:center;
+    color:#000;
+    width:125px;
+}
+.navitem.active {
+    background-color:#0096cf;
+    border-radius:5px;
+    color:#ffffff;
+}
+.tabdown .atm,
+.tabdown .sms,
+.tabdown .mbank,
+.tabdown .ibank {
+    display:none;
+}
+.tabdown .howto {
+    margin-top:10px;
+    min-height:400px;
+    padding:10px 15px;
+    border:1px solid #000;
+    border-radius:5px;
+}
+
+.activated {
+    display:block !important;
+}

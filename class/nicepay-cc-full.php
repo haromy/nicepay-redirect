@@ -164,6 +164,7 @@ class wc_gateway_nicepay_cc extends WC_Payment_Gateway {
     function receipt_page($order) {
         //echo $this->generate_nicepay_form($order);
         include_once PLUGIN_PATH."/paymentPage.php";
+
     }
     
     function includes() {
@@ -351,17 +352,14 @@ class wc_gateway_nicepay_cc extends WC_Payment_Gateway {
         $nicepay->set('amt', $order_total); // Total gross amount //
         $nicepay->set('referenceNo', $order_id);
         $nicepay->set('description', 'Payment of invoice No ' . $order_id);
-        $myaccount_page_id  = get_option('woocommerce_myaccount_page_id');
+        $myaccount_page_id = get_option( 'woocommerce_myaccount_page_id' );
         $myaccount_page_url = null;
-        
-        
-        if ($current_user->ID != 0) {
-            $checkout_url = get_permalink($myaccount_page_id) . "view-order/" . $order_id;
-        } else {
-            $checkout_url = wc_get_checkout_url()."order-received/";
+
+        if ( $myaccount_page_id ) {
+            $myaccount_page_url = get_permalink( $myaccount_page_id );
         }
-        
-        $nicepay->callBackUrl  = $checkout_url;
+
+        $nicepay->callBackUrl = $myaccount_page_url."view-order/".$order_id;
         $nicepay->dbProcessUrl = WC()->api_request_url('wc_gateway_nicepay_cc'); // Transaction description
         $nicepay->set('billingNm', $billingNm); // Customer name
         $nicepay->set('billingPhone', $billingPhone); // Customer phone number
