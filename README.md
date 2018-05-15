@@ -5,6 +5,10 @@ this plugin is using NICEPay API V1 Redirect (Professional)
 edited by fariz
 
 ## Changelog
+2018-05-15
+- bugfix iMid setting
+- add setting VA Fix type by customerId / billing phone number
+- add setting VA Fix length
 
 2018-05-07
 - add VA direct API V1
