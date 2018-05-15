@@ -346,6 +346,7 @@ class wc_gateway_nicepay_cc extends WC_Payment_Gateway {
         $nicepay = new NicepayLib();
         
         // Populate Mandatory parameters to send
+        $nicepay->set('iMid',$this->merchantID);
         $nicepay->set('payMethod', '01');
         $nicepay->set('currency', 'IDR');
         $nicepay->set('cartData', json_encode($cartData));

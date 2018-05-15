@@ -36,9 +36,23 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $this->enabled      = $this->settings['enabled'];
         $this->title        = "NICEPay Virtual Account";
         $this->description  = $this->settings['description'];
-        $this->url_env     = $this->settings['select_environment'];
+        $this->url_env      = $this->settings['select_environment'];
         $this->apikey       = $this->settings['apikey'];
-        $this->merchantID   = $this->settings['merchantID'];
+        $this->merchantID   = $this->get_option('merchantID');
+        $this->vaType       = $this->get_option('va_type');
+        $this->vaLength     = $this->get_option('va_length');
+        $this->banklist     = $this->get_option('bankedlist');
+        $this->bankset = array(
+            "BMRI" => array("label" => "Bank Mandiri"),
+            "BBBA" => array("label" => "Bank Permata"),
+            "IBBK" => array("label" => "BII Maybank"),
+            "BNIN" => array("label" => "BNI"),
+            "CENA" => array("label" => "BCA"),
+            "BNIA" => array("label" => "CIMB Niaga"),
+            "HNBN" => array("label" => "Keb Hana Bank"),
+            "BRIN" => array("label" => "BRI"),
+            "BDIN" => array("label" => "Danamon")
+        );
 
         // Actions
         $this->includes();
@@ -97,6 +111,40 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
                 'description' => __( '<small>Isikan dengan Merchant Key dari NICEPay</small>.', 'woothemes' ),
                 'default' => ''
             ),
+            'va_type' => array(
+                'title' => __( 'VA Fix Type', 'woothemes' ),
+                'type' => 'select',
+                'default' => '0',
+                'description' => __( 'If you want to use FIX VA number, kindly select this. Dont forget contact NICEPay to activate it. only used 8 digit number to generated.<br><strong>If enable, please disable setting for guest checkout and disable registration on checkout page.</strong>', 'woothemes' ),
+                'options'   => array(
+                  '0'    => __( 'Disable', 'woothemes' ),
+                  '1'   => __( 'by customer ID', 'woothemes' ),
+                  '2'   => __( 'by phone number of customer', 'woothemes' ),
+                ),
+            ),
+            'va_length' => array(
+                'title' => __( 'FIX VA Lenght', 'woothemes' ),
+                'type' => 'text',
+                'description' => __( '<small>If fix VA is enabled. please fill this field</small>.', 'woothemes' ),
+                'default' => ''
+            ),
+            'bankedlist' => array(
+                'title'         => __( 'Bank used', 'woothemes' ),
+                'type'          => 'multiselect',
+                'default'       => '',
+                'description'   => __( 'select the bank which is active for payment', 'woothemes' ),
+                'options' => array(
+                  'BMRI'    => 'Bank Mandiri',
+                  'IBBK'    => 'BII Maybank',
+                  'BBBA'    => 'Bank Permata',
+                  'CENA'    => 'Bank BCA',
+                  'BNIN'    => 'Bank BNI',
+                  'HNBN'    => 'Bank KEB Hana Indonesia',
+                  'BRIN'    => 'Bank BRI',
+                  'BNIA'    => 'Bank CIMB',
+                  'BDIN'    => 'Bank DANAMON'
+                )
+            ),
         );
     }
 
@@ -110,25 +158,53 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
     }
 
     function payment_fields() {
-        if ($this->description)
-            echo wpautop(wptexturize($this->description));
-            echo '<br/>';
-            $bank = $this->bank_list();
-            echo "Pilih Bank Account : ";
-            echo '<select name="bankCd">';
-            foreach($bank as $key => $val){
-                if($bank[$key]["disabled"] == "no"){
-                    echo '<option value="'.$key.'">'.$bank[$key]["label"].'</option>';
-                }
-            }
-            echo '</select>';
-            if($this->adminFee > 0){
-                echo '<br/>';
-            }
+        $bank = $this->bankset;
+        $output = "";
+        $output .= wpautop(wptexturize($this->description)).'<br>';
+        $output .= "Pilih Bank Account :".'<br>';
 
-            if($this->adminFee > 0){
-                echo wpautop(wptexturize('Exclude Admin Fee <b>Rp. '.$this->adminFee.'</b>'));
+        $data = $this->banklist;
+        $lenght = count($data);
+        $output .= '<div class="banklist"><select name="bankCd" style="width:100%;">';
+        for ($i=0;$i<$lenght;$i++) {
+            $output .= '<option value="'.$data[$i].'" data-icon="'.$data[$i].'">'.$bank[$data[$i]]["label"].'</option>';   
+        }
+        $output .= '</select></div>';
+
+        if($this->adminFee > 0){
+            $output .= '<br/>'.wpautop(wptexturize('Exclude Admin Fee <b>Rp. '.$this->adminFee.'</b>'));
+        }
+        echo $output;
+        //echo '<br>'.$this->vaType;
+        //$varesult = $this->gen_fix_va($this->vaType);
+        //echo '<br>'.$varesult;
+    }
+
+    function gen_fix_va($data){
+        $return = "";
+        switch($data) {
+            case 0:
+                break;
+            case 1:
+                $return = get_current_user_id();
+                break;
+            case 2:
+                $return = get_user_meta(get_current_user_id(),'billing_phone',true);
+                break;
+        }
+        $lengthdata = strlen($return);
+        $result = "";
+        if ($lengthdata < 8) {
+            $lack = 8 - $lengthdata;
+            for ($i=0;$i<$lack;$i++) {
+                $result .= "0";
             }
+            $result .= $return;
+        }
+        else {
+            $result = substr($return, -8);
+        }
+        return $result;
     }
 
     function add_content() {
@@ -139,22 +215,6 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
 
     public function validate_fields(){
         WC()->session->set('bankCd', $_POST["bankCd"]);
-    }
-
-    function bank_list() {
-        $bank = array(
-            "BMRI" => array("label" => "Mandiri","disabled" => "no"),
-            "BBBA" => array("label" => "Permata Bank","disabled" => "no"),
-            "IBBK" => array("label" => "Maybank","disabled" => "no"),
-            "BNIN" => array("label" => "BNI","disabled" => "no"),
-            "CENA" => array("label" => "BCA","disabled" => "no"),
-            "BNIA" => array("label" => "CIMB Niaga","disabled" => "no"),
-            "HNBN" => array("label" => "Keb Hana Bank","disabled" => "no"),
-            "BRIN" => array("label" => "BRI","disabled" => "no"),
-            "BDIN" => array("label" => "Danamon","disabled" => "no"
-            ),
-        );
-        return $bank;
     }
 
     function how_to($input) {
@@ -270,8 +330,8 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
 
     function includes(){
         //Validation class payment gateway woocommerce
-        if (!class_exists('NicepayLib'))
-            include_once "lib/NicepayLib.php";
+        
+            include_once PLUGIN_PATH."lib/NicepayLib.php";
     }
 
     function konversi($nilai) {
@@ -436,6 +496,7 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $dateNow        = date('Ymd');
         $vaExpiryDate   = date('Ymd', strtotime($dateNow . ' +1 day'));
         // Populate Mandatory parameters to send
+        $nicepay->set('iMid',$this->merchantID);
         $nicepay->set('payMethod', '02');
         $nicepay->set('currency', 'IDR');
         $nicepay->set('cartData', json_encode($cartData));
@@ -473,6 +534,38 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $nicepay->set('vacctValidTm', date('His')); // Set VA Expiry Time
         $nicepay->set('dbProcessUrl', WC()->api_request_url( 'wc_gateway_nicepay_va' ));
 
+
+        // check fix VA generate number
+        switch($this->vaType) {
+            case 0:
+                break;
+            case 1:
+                $lackdata = $this->vaLength - strlen(get_current_user_id());
+                $firstdata = "";
+                for ($i=0;$i<$lackdata;$i++) {
+                    $firstdata .= "0";
+                }
+                $merFixAcctId = $firstdata.get_current_user_id();
+                $nicepay->set('merFixAcctId',$merFixAcctId);
+                break;
+            case 2:
+                $reducelength = '-'.$this->vaLength;
+                if (strlen($billingPhone) > $this->vaLength) {
+                    $merFixAcctId = substr($billingPhone, (int)$reducelength);
+                }
+                else {
+                    $firstdata = "";
+                    $lackdata = $this->vaLength - strlen($billingPhone);
+                    for ($i=0;$i<$lackdata;$i++) {
+                        $firstdata .= "0";
+                    }
+                    $merFixAcctId = $firstdata.$billingPhone;
+                }
+                $nicepay->set('merFixAcctId',$merFixAcctId);
+                break;
+        }
+
+
         //running debug
         $nicepay_log["isi"] = $nicepay;
         $this->sent_log(json_encode($nicepay_log));
@@ -486,7 +579,7 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
 
         // Response from NICEPAY
         if (isset($response->resultCd) && $response->resultCd == "0000") {
-            $bank = $this->bank_list();
+            $bank = $this->bankset;
             $bankCd = WC()->session->get('bankCd');
 
             //Change format date

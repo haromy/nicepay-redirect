@@ -122,33 +122,9 @@ class NicepayLib {
         return "";
     }
 
-    // Request VA
-    public function requestVA() {
-        // Populate data
-        $this->set('iMid', $this->iMid);
-        $this->set('merchantToken', $this->setToken("01"));
-        $this->set('dbProcessUrl', $this->dbProcessUrl);
-        $this->set('callBackUrl', $this->callBackUrl);
-        $this->set('instmntMon', '1');
-        $this->set('instmntType', '1');
-        $this->set('userIP', $this->getUserIP());
-        $this->set('goodsNm', $this->get('description'));
-        $this->set('vat', '0');
-        $this->set('fee', '0');
-        $this->set('notaxAmt', '0');
-        if ($this->get('cartData')  == "") { $this->set('cartData', '{}'); }
-
-        // Send Request
-        $this->request->operation('requestVA');
-        $this->request->openSocket();
-        $this->resultData = $this->request->apiRequest($this->requestData);
-        unset($this->requestData);
-        return $this->resultData;
-    }
-
     // registAPI fucntion
     public function registAPI($method) {
-        $this->set('iMid', $this->iMid);
+        //$this->set('iMid', $this->iMid);
         $this->set('dbProcessUrl', $this->dbProcessUrl);
         $this->set('callBackUrl', $this->callBackUrl);
         $this->set('userIP', $this->getUserIP());
@@ -170,7 +146,7 @@ class NicepayLib {
                 $this->request->operation('direct_onepass_V1');
                 break;
         }
-        echo json_encode($this->requestData); // for display json format to send (debugging)
+        //echo json_encode($this->requestData); // for display json format to send (debugging)
         $this->request->openSocket();
         $this->resultData = $this->request->apiRequest($this->requestData);
         unset($this->requestData);
