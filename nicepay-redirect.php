@@ -20,7 +20,8 @@ function woocommerce_nicepay_init() {
 		return;
 	}
 
-	define( 'PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
+    define( 'PLUGIN_PATH', plugin_dir_path( __FILE__ ) );
+    define( 'PLUGIN_URL_PATH', WP_PLUGIN_URL.'/'.plugin_basename( dirname(__FILE__) ).'/' );
     require_once dirname( __FILE__ ) . '/class/nicepay-cc-full.php';
     require_once dirname( __FILE__ ) . '/class/nicepay-va.php';
     

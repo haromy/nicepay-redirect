@@ -20,8 +20,8 @@
  *
  * ____________________________________________________________
  */
-
-
+include_once ('NicepayConfig.php');
+include_once ('NicepayLogger.php');
 include_once ('NicepayRequestor.php');
 class NicepayLib {
     public $tXid;
@@ -29,10 +29,11 @@ class NicepayLib {
     public $bankVacctNo;
     public $resultCd;
     public $resultMsg;
-    public $iMid = NICEPAY_IMID;
+    public $iMid = "";
     public $callBackUrl = NICEPAY_CALLBACK_URL;
     public $dbProcessUrl = NICEPAY_DBPROCESS_URL;
-    public $merchantKey = NICEPAY_MERCHANT_KEY;
+    //public $merchantKey = NICEPAY_MERCHANT_KEY;
+    public $merchantKey = "";
     public $cartData;
     public $requestData = array ();
     public $resultData = array ();
@@ -115,7 +116,9 @@ class NicepayLib {
     public function set($name, $value) {
         $this->requestData[$name] = $value;
     }
-
+    public function setmerchatKey($value) {
+        $this->merchantKey = $value;
+    }
     // Retrieve POST parameter value
     public function get($name) {
         if (isset($this->requestData[$name])) { return $this->requestData[$name]; }
