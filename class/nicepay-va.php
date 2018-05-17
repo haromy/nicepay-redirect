@@ -23,7 +23,7 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $this->has_fields = false;
 
         //payment gateway logo
-        $this->icon = plugins_url('/logo-allbank.png', __FILE__);
+        $this->icon = plugins_url('logobank.png', dirname(__FILE__));
 
         //redirect URL
         $this->redirect_url     = str_replace( 'https:', 'http:', add_query_arg( 'wc-api', 'wc_gateway_nicepay_va', home_url( '/' ) ) );

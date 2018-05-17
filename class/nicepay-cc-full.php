@@ -24,7 +24,7 @@ class wc_gateway_nicepay_cc extends WC_Payment_Gateway {
         $this->has_fields = false;
         
         //payment gateway logo
-        $this->icon = PLUGIN_PATH.'nicepay.png';
+        $this->icon = PLUGIN_URL_PATH.'nicepay.png';
         
         //redirect URL
         $this->redirect_url = str_replace('https:', 'http:', add_query_arg('wc-api', 'wc_gateway_nicepay_cc', home_url('/')));
@@ -344,7 +344,7 @@ class wc_gateway_nicepay_cc extends WC_Payment_Gateway {
 
         // Prepare Parameters
         $nicepay = new NicepayLib();
-        
+        $nicepay->setmerchatKey($this->apikey);
         // Populate Mandatory parameters to send
         $nicepay->set('iMid',$this->merchantID);
         $nicepay->set('payMethod', '01');
