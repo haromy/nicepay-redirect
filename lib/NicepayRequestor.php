@@ -20,7 +20,6 @@
  */
 
 include_once ('NicepayLogger.php');
-//include_once ('NicepayConfig.php');
 
 class NicepayRequestor {
     public $sock = 0;

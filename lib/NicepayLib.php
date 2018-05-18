@@ -95,7 +95,7 @@ class NicepayLib {
     * 01    = for charge, check status
     * 02    = for cancel API
     */
-    private function setToken($data) {
+    public function setToken($data) {
         switch($data) {
             case "01":
                 $token = hash('sha256',$this->get('iMid').$this->get('referenceNo').$this->get('amt').$this->merchantKey);
@@ -156,10 +156,9 @@ class NicepayLib {
         return $this->resultData;
     }
 
-    public function checkPaymentStatus($tXid, $referenceNo, $amt) {
+    public function checkPaymentStatus($iMid, $tXid, $referenceNo, $amt) {
         // Populate data
-        $this->set('iMid', $this->iMid);
-        $this->set('merchantToken', $this->setToken("01"));
+        $this->set('iMid', $iMid);
         $this->set('tXid', $tXid);
         $this->set('referenceNo', $referenceNo);
         $this->set('amt', $amt);

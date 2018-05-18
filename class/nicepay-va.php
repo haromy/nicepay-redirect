@@ -59,7 +59,7 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         add_action('woocommerce_update_options_payment_gateways_' . $this->id, array(&$this, 'process_admin_options'));
         add_action('woocommerce_receipt_nicepay_va', array(&$this, 'receipt_page'));
 
-        //add_action( 'woocommerce_processing', array(&$this, 'add_payment_detail_to_order_email'), 1 );
+        add_action( 'woocommerce_processing', array(&$this, 'add_payment_detail_to_order_email'), 1 );
         add_action( 'woocommerce_thankyou', array($this, 'add_description_payment_success'), 1 );
 
         //Add Text to email
@@ -782,7 +782,7 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $this->sent_log(json_encode($nicepay_log));
 
         // <RESQUEST to NICEPAY>
-        $paymentStatus = $nicepay->checkPaymentStatus($tXid, $referenceNo, $amt);
+        $paymentStatus = $nicepay->checkPaymentStatus($iMid, $tXid, $referenceNo, $amt);
 
         //running debug
         $nicepay_log["isi"] = $paymentStatus;
