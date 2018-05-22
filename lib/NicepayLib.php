@@ -97,19 +97,14 @@ class NicepayLib {
     */
     public function setToken($data) {
         switch($data) {
-            case "01":
+            case "01": // for order regist
                 $token = hash('sha256',$this->get('iMid').$this->get('referenceNo').$this->get('amt').$this->merchantKey);
                 break;
-            case "02":
+            case "02": // for check status
                 $token = hash('sha256',$this->get('iMid').$this->get('tXid').$this->get('amt').$this->merchantKey);
                 break;
         }
         return $token;
-    }
-
-    public function merchantTokenC() {
-        // SHA256( Concatenate(iMid + referenceNo + amt + merchantKey) )
-        return hash('sha256',$this->get('iMid').$this->get('tXid').$this->get('amt').$this->merchantKey);
     }
 
     // Set POST parameter name and its value

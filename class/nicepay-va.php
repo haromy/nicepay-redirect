@@ -56,16 +56,16 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
 
         // Actions
         $this->includes();
-        add_action('woocommerce_update_options_payment_gateways_' . $this->id, array(&$this, 'process_admin_options'));
-        add_action('woocommerce_receipt_nicepay_va', array(&$this, 'receipt_page'));
+        add_action('woocommerce_update_options_payment_gateways_'.$this->id,array(&$this, 'process_admin_options'));
+        add_action('woocommerce_receipt_'. $this->id, array(&$this, 'receipt_page'));
 
-        add_action( 'woocommerce_processing', array(&$this, 'add_payment_detail_to_order_email'), 1 );
-        add_action( 'woocommerce_thankyou', array($this, 'add_description_payment_success'), 1 );
+        add_action('woocommerce_processing',array(&$this,'add_payment_detail_to_order_email'),1);
+        add_action('woocommerce_thankyou_'. $this->id,array($this,'add_description_payment_success'),1);
 
         //Add Text to email
-        add_action( 'woocommerce_email_after_order_table', array($this, 'add_content' ));
+        add_action('woocommerce_email_after_order_table', array($this, 'add_content'));
         // Payment listener/API hook
-        //add_action( 'woocommerce_api_wc_gateway_nicepay_va', array($this, 'notification_handler' ) );
+        //add_action('woocommerce_api_wc_gateway_nicepay_va',array($this,'handle_notif'));
     }
 
     function init_form_fields() {
@@ -325,7 +325,6 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
     function receipt_page($order) {
         global $woocommerce;
         echo $this->generate_nicepay_form($order);
-        $woocommerce->cart->empty_cart();
     }
 
     function includes(){
@@ -356,7 +355,6 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $nicepay_log["redirect"] = "callback";
         $nicepay_log["referenceNo"] = $order_id;
         $nicepay_log["isi"] = $_SERVER["REQUEST_URI"];
-        $this->sent_log(json_encode($nicepay_log));
 
         $order = new WC_Order($order_id);
         $cart = new WC_Cart();
@@ -453,7 +451,6 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
 
         //running debug
         $nicepay_log["isi"] = $cartData;
-        $this->sent_log(json_encode($nicepay_log));
 
         //Order Total
         //$order_total = $this->get_order_total();
@@ -507,14 +504,9 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         $nicepay->set('referenceNo', $order_id);
         $nicepay->set('description', 'Payment of invoice No '.$order_id); // Transaction description
         $nicepay->set("bankCd",WC()->session->get('bankCd'));
-        $myaccount_page_id = get_option( 'woocommerce_myaccount_page_id' );
-        $myaccount_page_url = null;
-
-        if ($myaccount_page_id ) {
-            $myaccount_page_url = get_permalink($myaccount_page_id );
-        }
-
-        $nicepay->callBackUrl = $myaccount_page_url."view-order/".$order_id;
+        
+        $thankyou_url = $order->get_checkout_order_received_url($order);
+        $nicepay->callBackUrl = $thankyou_url;
         $nicepay->dbProcessUrl = WC()->api_request_url( 'wc_gateway_nicepay_cc' );// Transaction description
         $nicepay->set('billingNm', $billingNm); // Customer name
         $nicepay->set('billingPhone', $billingPhone); // Customer phone number
@@ -571,17 +563,17 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
 
         //running debug
         $nicepay_log["isi"] = $nicepay;
-        $this->sent_log(json_encode($nicepay_log));
 
         // Send Data
         $response = $nicepay->registAPI("virtual_account");
 
         //running debug
         $nicepay_log["isi"] = $response;
-        $this->sent_log(json_encode($nicepay_log));
 
         // Response from NICEPAY
         if (isset($response->resultCd) && $response->resultCd == "0000") {
+            global $woocommerce;
+            $woocommerce->cart->empty_cart();
             $bank = $this->bankset;
             $bankCd = WC()->session->get('bankCd');
 
@@ -744,61 +736,57 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         );
     }
 
-    function notification_handler(){
-        $nicepay = new NicepayLib();
-
-        // Listen for parameters passed
-        $pushParameters = array(
-            'tXid',
-            'referenceNo',
-            'amt',
-            'merchantToken'
-        );
-
-        $nicepay->extractNotification($pushParameters);
-
-        $iMid               = $nicepay->iMid;
-        $tXid               = $nicepay->getNotification('tXid');
-        $referenceNo        = $nicepay->getNotification('referenceNo');
-        $amt                = $nicepay->getNotification('amt');
-        $pushedToken        = $nicepay->getNotification('merchantToken');
-
-        //running debug
-        $nicepay_log["redirect"] = "dbproccess";
-        $nicepay_log["referenceNo"] = $referenceNo;
-        $nicepay_log["isi"] = $_SERVER["REQUEST_URI"];
-        $this->sent_log(json_encode($nicepay_log));
-
-        $nicepay->set('tXid', $tXid);
-        $nicepay->set('referenceNo', $referenceNo);
-        $nicepay->set('amt', $amt);
-        $nicepay->set('iMid',$iMid);
-
-        $merchantToken = $nicepay->merchantTokenC();
-        $nicepay->set('merchantToken', $merchantToken);
-
-        //running debug
-        $nicepay_log["isi"] = $pushedToken ." == ". $merchantToken;
-        $this->sent_log(json_encode($nicepay_log));
-
-        // <RESQUEST to NICEPAY>
-        $paymentStatus = $nicepay->checkPaymentStatus($iMid, $tXid, $referenceNo, $amt);
-
-        //running debug
-        $nicepay_log["isi"] = $paymentStatus;
-        $this->sent_log(json_encode($nicepay_log));
-
-        if($pushedToken == $merchantToken) {
-            $order = new WC_Order((int)$referenceNo);
-
-            if (isset($paymentStatus->status) && $paymentStatus->status == '0'){
-                $order->add_order_note( __( 'Pembayaran telah dilakukan melalui NICEPay dengan id transaksi '.$referenceNo, 'woocommerce' ) );
-                $order->payment_complete();
-            }else{
-                $order->add_order_note( __( 'Pembayaran gagal! '.$referenceNo, 'woocommerce' ) );
-                $order->update_status('Failed');
-            }
+    function handle_notif() {
+        if ( $_SERVER['REQUEST_METHOD'] == 'GET'){
+            die('This endpoint should not be opened using browser (HTTP GET). This endpoint is for Push notification URL (HTTP POST)');
+            exit();
         }
+
+        if(isset($_POST)) {
+            $data = $_POST;
+            //echo $data;
+            $tXid           = $data['tXid'];
+            $amt            = $data['amt'];
+            $pushedToken    = $data['merchantToken'];
+            $referenceNo    = $data['referenceNo'];
+            $status         = $data['tXid'];
+            $iMid           = $this->merchantID;
+
+            $nicepay = new NicepayLib();
+            // Set parameter for compare Token from push is real or not.
+            $nicepay->setmerchatKey($this->apikey);
+            $nicepay->set('tXid', $tXid);
+            $nicepay->set('referenceNo', $referenceNo);
+            $nicepay->set('amt', $amt);
+            $nicepay->set('iMid',$iMid);
+    
+            $merchantToken = $nicepay->setToken("01");
+            $nicepay->set('merchantToken', $merchantToken);
+            
+            if ($pushedToken == $merchantToken) {
+                $paymentStatus = $nicepay->checkPaymentStatus($iMid, $tXid, $referenceNo, $amt);
+
+                if ($paymentStatus->resultCd != "0000") {
+                    exit;
+                }
+
+                else {
+                    $status = $paymentStatus->status;
+                    $tXid   = $paymentStatus->tXid;
+                    $refNo  = $paymentStatus->referenceNo;
+                    
+                    global $woocommerce;
+                    $order = new WC_Order($refNo);
+
+                    if (isset($paymentStatus->status) && $paymentStatus->status == '0'){
+                        $order->add_order_note( __( 'Pembayaran telah dilakukan melalui NICEPay dengan id transaksi '.$referenceNo,'woocommerce'));
+                        $order->payment_complete();
+                    }
+                }
+            }
+            else {exit;}
+        }
+        else {exit;}
     }
 
     public function addrRule(){
@@ -884,23 +872,5 @@ class wc_gateway_nicepay_va extends WC_Payment_Gateway {
         }
 
         return $value;
-    }
-
-    public function sent_log($data){
-        //$debugMode = $this->debug;
-        //if($debugMode == 'yes'){
-        //	$ch = curl_init();
-            //set the url, number of POST vars, POST data
-
-            //curl_setopt($ch,CURLOPT_URL, "http://checking-bug.hol.es/proc.php");
-            //curl_setopt($ch,CURLOPT_POST, 1);
-            //curl_setopt($ch,CURLOPT_POSTFIELDS, "log=".$data."++--++debug==".$debugMode);
-
-            //execute post
-            //$result = curl_exec($ch);
-
-            //close connection
-            //curl_close($ch);
-        //}
     }
 }
