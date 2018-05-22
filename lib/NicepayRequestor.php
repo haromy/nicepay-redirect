@@ -20,7 +20,6 @@
  */
 
 include_once ('NicepayLogger.php');
-include_once ('NicepayConfig.php');
 
 class NicepayRequestor {
     public $sock = 0;
@@ -40,9 +39,9 @@ class NicepayRequestor {
     }
 
     public function operation($type) {
-        if ($type == "requestVA") {
+        if ($type == "direct_onepass_V1") {
             $this->apiUrl = NICEPAY_ENV.NICEPAY_REQ_VA_URL;
-        } else if ($type == "orderRegistV1") {
+        } else if ($type == "redirect_orderRegist_V1") {
             $this->apiUrl = NICEPAY_ENV.NICEPAY_ORDER_REGIST_V1_URL;
         } else if ($type == "checkPaymentStatus") {
             $this->apiUrl = NICEPAY_ENV.NICEPAY_ORDER_STATUS_URL;

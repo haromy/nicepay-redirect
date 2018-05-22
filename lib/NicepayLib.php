@@ -20,8 +20,8 @@
  *
  * ____________________________________________________________
  */
-
-
+include_once ('NicepayConfig.php');
+include_once ('NicepayLogger.php');
 include_once ('NicepayRequestor.php');
 class NicepayLib {
     public $tXid;
@@ -29,10 +29,11 @@ class NicepayLib {
     public $bankVacctNo;
     public $resultCd;
     public $resultMsg;
-    public $iMid = NICEPAY_IMID;
+    public $iMid = "";
     public $callBackUrl = NICEPAY_CALLBACK_URL;
     public $dbProcessUrl = NICEPAY_DBPROCESS_URL;
-    public $merchantKey = NICEPAY_MERCHANT_KEY;
+    //public $merchantKey = NICEPAY_MERCHANT_KEY;
+    public $merchantKey = "";
     public $cartData;
     public $requestData = array ();
     public $resultData = array ();
@@ -94,61 +95,34 @@ class NicepayLib {
     * 01    = for charge, check status
     * 02    = for cancel API
     */
-    private function setToken($data) {
+    public function setToken($data) {
         switch($data) {
-            case "01":
+            case "01": // for order regist
                 $token = hash('sha256',$this->get('iMid').$this->get('referenceNo').$this->get('amt').$this->merchantKey);
                 break;
-            case "02":
+            case "02": // for check status
                 $token = hash('sha256',$this->get('iMid').$this->get('tXid').$this->get('amt').$this->merchantKey);
                 break;
         }
         return $token;
     }
 
-    public function merchantTokenC() {
-        // SHA256( Concatenate(iMid + referenceNo + amt + merchantKey) )
-        return hash('sha256',$this->get('iMid').$this->get('tXid').$this->get('amt').$this->merchantKey);
-    }
-
     // Set POST parameter name and its value
     public function set($name, $value) {
         $this->requestData[$name] = $value;
     }
-
+    public function setmerchatKey($value) {
+        $this->merchantKey = $value;
+    }
     // Retrieve POST parameter value
     public function get($name) {
         if (isset($this->requestData[$name])) { return $this->requestData[$name]; }
         return "";
     }
 
-    // Request VA
-    public function requestVA() {
-        // Populate data
-        $this->set('iMid', $this->iMid);
-        $this->set('merchantToken', $this->setToken("01"));
-        $this->set('dbProcessUrl', $this->dbProcessUrl);
-        $this->set('callBackUrl', $this->callBackUrl);
-        $this->set('instmntMon', '1');
-        $this->set('instmntType', '1');
-        $this->set('userIP', $this->getUserIP());
-        $this->set('goodsNm', $this->get('description'));
-        $this->set('vat', '0');
-        $this->set('fee', '0');
-        $this->set('notaxAmt', '0');
-        if ($this->get('cartData')  == "") { $this->set('cartData', '{}'); }
-
-        // Send Request
-        $this->request->operation('requestVA');
-        $this->request->openSocket();
-        $this->resultData = $this->request->apiRequest($this->requestData);
-        unset($this->requestData);
-        return $this->resultData;
-    }
-
     // registAPI fucntion
     public function registAPI($method) {
-        $this->set('iMid', $this->iMid);
+        //$this->set('iMid', $this->iMid);
         $this->set('dbProcessUrl', $this->dbProcessUrl);
         $this->set('callBackUrl', $this->callBackUrl);
         $this->set('userIP', $this->getUserIP());
@@ -164,24 +138,22 @@ class NicepayLib {
         
         switch($method) {
             case "credit_card":
-                // Send Request
-                $this->request->operation('orderRegistV1');
+                $this->request->operation('redirect_orderRegist_V1');
                 break;
             case "virtual_account":
-                $this->request->operation('orderRegistV1');
+                $this->request->operation('direct_onepass_V1');
                 break;
         }
-        echo json_encode($this->requestData); // for display json format to send (debugging)
+        //echo json_encode($this->requestData); // for display json format to send (debugging)
         $this->request->openSocket();
         $this->resultData = $this->request->apiRequest($this->requestData);
         unset($this->requestData);
         return $this->resultData;
     }
 
-    public function checkPaymentStatus($tXid, $referenceNo, $amt) {
+    public function checkPaymentStatus($iMid, $tXid, $referenceNo, $amt) {
         // Populate data
-        $this->set('iMid', $this->iMid);
-        $this->set('merchantToken', $this->setToken("01"));
+        $this->set('iMid', $iMid);
         $this->set('tXid', $tXid);
         $this->set('referenceNo', $referenceNo);
         $this->set('amt', $amt);
